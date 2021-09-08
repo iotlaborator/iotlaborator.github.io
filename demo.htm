@@ -1,0 +1,283 @@
+<html>
+  <head>
+    <title>JavaScript MQTT WebSocket Example</title>
+<style>
+
+  h1 {
+    color: #77cafa;
+    font-size: 60px;
+    text-align: center;
+  }
+
+  .center {
+    display:block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 200px;
+  }
+
+  .steps-heading {
+    font-size: 30px;
+    font-weight: bold;
+    text-indent: 30px;
+    
+  }
+
+  .steps-number {
+        
+    border-radius: 50%;
+    width: 80px;
+    height: 80px;
+    padding: 8px;
+    margin: auto;
+    background: #77cafa;
+    color: #000000;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 60;
+    font-weight: bold;
+    line-height: 80px;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  .steps-box {
+    width: 100%;
+  }
+
+  .steps-box-number {
+    height:100px; 
+    background:#ffffff; 
+    line-height: 100px;
+
+  }
+
+  .steps-box-heading {
+    height:100px; 
+    background:#ffffff; 
+    margin:10px;
+    line-height: 100px;
+    text-align: center;  
+  }
+
+  .input {
+    display:block;
+    margin: auto;
+    border-style: solid;
+    border-color: #77cafa;
+    border-radius: 10px;
+    height: 50px;
+    width: 400px;
+    text-align: center;
+    font-size: 20px;
+  }
+
+  ::placeholder {
+	color:#7a7d80;
+  text-align: center;
+  font-size: 20px;
+
+}
+  .btn {
+    display: block;
+    margin: auto;
+    background-color: #77cafa;
+    border-style: none;
+    border-radius: 10px;
+    height: 50px;
+    width: 200px;
+    color: white;
+    font-size: 20px;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+
+  }
+
+  .chart {
+    display: block;
+    margin: auto;
+    width: 800px;
+  }
+
+
+
+
+</style>
+
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"
+      type="text/javascript"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"
+      integrity="sha512-Wt1bJGtlnMtGP0dqNFH1xlkLBNpEodaiQ8ZN5JLA5wpc1sUlk/O5uuOMNgvzddzkpvZ9GLyYNa8w2s7rqiTk5Q=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+
+    <script type="text/javascript" language="javascript">
+      //MQTT
+      var client;
+      var clientId = "cr" + Math.random();
+      var host = "broker.hivemq.com";
+      var port = 8000;
+      var destinationTopic = "";
+
+      //CHART
+      var chart;
+      var data = {
+        labels: [],
+        datasets: [
+          {
+            label: "Temperature",
+            data: [],
+            fill: false,
+            borderColor: "rgb(75, 192, 192)",
+            tension: 0.1,
+          },
+        ],
+      };
+
+      function sleep(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+
+      function MQTTconnect() {
+        log("Connecting to " + host + " " + port);
+
+        client = new Paho.MQTT.Client(host, Number(port), clientId);
+        client.onConnectionLost = onConnectionLost;
+        client.onMessageArrived = onMessageArrived;
+        client.connect({ onSuccess: onConnect, onFailure: onFailure });
+      }
+
+      function onFailure() {
+        log("Connection failed -> retrying...");
+        setTimeout(MQTTconnect, 2000);
+      }
+
+      function onConnectionLost(responseObject) {
+        if (responseObject.errorCode !== 0) {
+          log("Connection was lost: " + responseObject.errorMessage);
+        }
+      }
+
+      function onConnect() {
+        log("Connection was successful");
+        client.subscribe(destinationTopic);
+        log("Subscribed to: " + destinationTopic);
+      }
+
+      function onMessageArrived(message) {
+        log(
+          "Received [topic: " +
+            message.destinationName +
+            "]: " +
+            message.payloadString
+        );
+
+        //TODO - zmen si label na neco vice smysluplneho
+        //     - new Date() -> pak je nutne nakonfigurovat formatovani osy x
+        //     - pripadne si prevezmy nejakou hodnotu z payloadu
+        ///    - ...
+        addChartData("", Number(message.payloadString));
+      }
+
+      function log(msg) {
+        document.getElementById("log").innerHTML =
+          document.getElementById("log").innerHTML +
+          "<br /> [" +
+          new Date().toLocaleString() +
+          "] " +
+          msg;
+      }
+
+      function renderChart() {
+        var ctx = document.getElementById("dataChart").getContext("2d");
+        chart = new Chart(ctx, {
+          type: "line",
+          data,
+
+          options: {
+            scales: {
+              y: {
+                min: -50,
+                max: 50,
+                beginAtZero: true,
+              },
+            },
+          },
+        });
+      }
+
+      function addChartData(label, data) {
+        chart.data.labels.push(label);
+        chart.data.datasets.forEach((dataset) => {
+          dataset.data.push(data);
+        });
+        chart.update();
+      }
+
+      function newTopic() {
+        destinationTopic = document.getElementById("myTopic").value;
+        MQTTconnect();
+
+      }
+
+    </script>
+  </head>
+  <body>
+    <h1>Zobrazení dat ze senzoru</h1>
+
+    <div class="steps-box-number">
+      <div class="steps-number">1</div>
+    </div>
+
+    <div class="steps-box-heading">
+      <div class = "steps-heading">Otevřete si na mobilu simulaci čidla teploty </div>
+    </div>
+
+ 
+  
+    <p><img src="files/img/iotlab-sensor-qr.png" alt="logo" class="center"></br></br></p>
+
+  
+
+    <div class="steps-box-number">
+      <div class="steps-number">2</div>
+    </div>
+
+    
+    <div class="steps-box-heading">
+      <div class = "steps-heading">Vložte "Topic" vygenerovaný na stránce čidla </div>
+    </div>
+
+    <form  id="form" onsubmit="return false;">
+      <input type="text" id="myTopic" name="mytopic" class="input" placeholder="vložte topic">
+      </br>
+      <input type="submit" value="ODESLAT" class="btn" onclick="newTopic();">
+    </br></br>
+    </form>
+
+    <div class="steps-box-number">
+      <div class="steps-number">3</div>
+    </div>
+    
+    <div class="steps-box-heading">
+      <div class = "steps-heading">Změny nastavení čidla sledujte na grafu </div>
+    </div>
+
+
+    <div class="chart"><canvas id="dataChart"></canvas></div>
+    </br></br>
+    <div class="chart" id="log"></div>
+
+    <script>
+      //Chart
+      renderChart();
+
+      //MQTT
+      //MQTTconnect();
+
+
+    </script>
+  </body>
+</html>
